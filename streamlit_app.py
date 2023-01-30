@@ -8,10 +8,12 @@ import altair as alt
 import numpy as np
 import calplot as cp
 import calendar
+from streamlit_extras.badges import badge
 
 
 st.set_page_config(layout="wide")
 corner_radius = 4
+days_of_week = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
 # Get the week number of the first day for each month for the given year
 def get_month_weeks(year):
@@ -26,49 +28,6 @@ def get_month_weeks(year):
     return month_weeks
 
 
-@st.experimental_memo()
-def get_data():
-    listening_history = []
-    for i in range(0, 20):
-        try:
-            listening_history.append(pd.read_json(f"./2022/data/endsong_{i}.json"))
-        except:
-            pass
-    all_data = pd.concat(listening_history).reset_index()
-    return all_data
-
-
-all_data = get_data()
-
-# Extract the data from the csv as a list of items
-coachella_lineup = pd.read_csv("./coachella2023.csv")
-
-
-# Change the column names to be more readable
-change_cols = {
-    "master_metadata_track_name": "trackName",
-    "master_metadata_album_artist_name": "artistName",
-    "ts": "endTime",
-    "ms_played": "msPlayed",
-}
-# Rename if the column name is in the dictionary
-all_data = all_data.rename(columns={i: change_cols[i] for i in change_cols if i in all_data.columns})
-
-
-# filer the artists that are in the coachella lineup
-# join the coachella lineup with the listening history
-all_data = all_data.merge(coachella_lineup, left_on="artistName", right_on="Artist", how="inner")
-
-# Add features
-all_data["endTime"] = pd.to_datetime(all_data["endTime"])
-all_data["endTime"] = pd.Series([(i + timedelta(hours=16)) for i in all_data.endTime])
-all_data["day"] = [i.date() for i in all_data["endTime"]]
-all_data["dow"] = [i.weekday() for i in all_data["endTime"]]
-all_data["time"] = [i.hour for i in all_data["endTime"]]
-all_data["week"] = all_data["endTime"].dt.isocalendar().week
-all_data["year"] = all_data["endTime"].dt.isocalendar().year
-all_data["minutesPlayed"] = all_data["msPlayed"] / 60000
-
 # Filter for the minimum minutes played grouped by artist
 st.title("🎡 Coachella 2023 Spotify Match 🎶")
 st.markdown("Match your Spotify listening history with the Coachella 2023 lineup.")
@@ -78,45 +37,67 @@ col1, col2 = st.columns(2)
 col2.markdown(
     """
     ## About
-    I'm attending Coachella this year. After looking at the line-up, I was having trouble remembering exactly which artists I've spent time listening to. This app takes your Spotify listening history and matches it with the Coachella 2023 lineup. It then shows you the total minutes you've listened to each artist, the top artist, and a chart of the total artists by day. You can also filter the artists by the minimum minutes you've listened to them.
+     There are so many artists playing Coachella it can be hard to keep track of all of them. This app takes your Spotify listening history and matches it with the Coachella 2023 lineup. It then shows you the total minutes you've listened to each match artist, who your top artist is, and plots it all. The bottom section allows you filter by artist to get a bit more detail on your listening history. The app is still in beta so please let me know if you have any feedback or suggestions! 
     """
 )
+with col2:
+    badge("twitter", "TYLERSlMONS", "https://twitter.com/TYLERSlMONS")
 col1.markdown(
     """
     ## How to use
     1. Download your Spotify listening history from [here](https://www.spotify.com/us/account/privacy/). Note that this takes about 5 days for the last year or 30 days for your entire listening history
-    2. Unzip the file and put the `data` folder in the same directory as this app
+    2. Unzip the file and attach all of the files like `StreamingHistory#.json`
     3. Run the app and see your matches!
     """
 )
 
+# Extract the data from the csv as a list of items
+coachella_lineup = pd.read_csv("./coachella2023.csv")
 
-min_min = st.number_input("Select Minimum Minutes", 1, 60, 5)
-# Grab a date range for the min and max date
-min_date = all_data["endTime"].min().date()
-max_date = all_data["endTime"].max().date()
+# Change the column names to be more readable
+change_cols = {
+    "master_metadata_track_name": "trackName",
+    "master_metadata_album_artist_name": "artistName",
+    "ts": "endTime",
+    "ms_played": "msPlayed",
+}
 
-date_range_choice = st.radio(
-    "Select Date Range",
-    ["Last 30 Days", "Last Year", "All Time"],
-)
 
-if date_range_choice == "Last 30 Days":
-    date_range = [max_date - timedelta(days=30), max_date]
-elif date_range_choice == "Last Year":
-    date_range = [max_date - timedelta(days=365), max_date]
-else:
-    date_range = [min_date, max_date]
+history = st.file_uploader("Upload your Spotify listening history", type="json", accept_multiple_files=True)
 
-date_range = st.date_input(
-    "Custom Date Range",
-    date_range,
-    min_value=min_date,
-    max_value=max_date,
-    help="Select a date range of your listening history",
-)
-all_data = all_data.groupby("artistName").filter(lambda x: x["minutesPlayed"].sum() > min_min)
-all_data = all_data[(all_data["endTime"].dt.date >= date_range[0]) & (all_data["endTime"].dt.date <= date_range[1])]
+
+@st.experimental_memo
+def get_all_data():
+    if history:
+        listening_history = []
+        for i in history:
+            listening_history.append(pd.read_json(path_or_buf=i))
+        all_data = pd.concat(listening_history).reset_index()
+        return all_data
+    else:
+        st.info("Upload your Spotify listening history to see your matches")
+        st.stop()
+
+
+# Rename if the column name is in the dictionary
+all_data = get_all_data()
+all_data = all_data.rename(columns={i: change_cols[i] for i in change_cols if i in all_data.columns})
+
+# Add features
+all_data["endTime"] = pd.to_datetime(all_data["endTime"])
+all_data["endTime"] = pd.Series([(i + timedelta(hours=16)) for i in all_data.endTime])
+all_data["date"] = [i.date() for i in all_data["endTime"]]
+all_data["dow"] = [i.weekday() for i in all_data["endTime"]]
+all_data["day_of_week_str"] = all_data["dow"].apply(lambda x: calendar.day_name[x])
+all_data["time"] = [i.hour for i in all_data["endTime"]]
+all_data["week"] = all_data["endTime"].dt.isocalendar().week
+all_data["year"] = all_data["endTime"].dt.isocalendar().year
+all_data["minutesPlayed"] = all_data["msPlayed"] / 60000
+
+full_data_copy = all_data
+all_data = all_data.merge(coachella_lineup, left_on="artistName", right_on="Artist", how="inner")
+
+all_data = all_data.groupby("artistName").filter(lambda x: x["minutesPlayed"].sum() > 1)
 
 grouped_artist_total = all_data.groupby(["artistName"])["minutesPlayed"].sum()
 top_artist = grouped_artist_total.sort_values(ascending=False).index[0]
@@ -129,16 +110,8 @@ top_artists_order = top_artists_total_minutes.index.to_list()
 all_data = all_data.merge(top_artists_total_minutes.reset_index(), on="artistName", how="left")
 all_data["rank"] = all_data["Total Minutes"].rank(ascending=False)
 
-
-# Make three streamlit columns with st.metric for each of the following
-col1, col2, col3 = st.columns(3)
-col1.metric("Total Artists", all_data["artistName"].nunique())
-col2.metric("Top Artist", top_artist)
-col3.metric("Date Range", f"{all_data['endTime'].min().date()} - {all_data['endTime'].max().date()}")
-
-col1, col2 = st.columns(2)
-
 # Artist top minutes chart
+col1, col2 = st.columns(2)
 minutes_played_chart = (
     alt.Chart(top_artists_total_minutes.reset_index())
     .mark_bar(width=40, cornerRadius=corner_radius)
@@ -147,7 +120,9 @@ minutes_played_chart = (
             "artistName",
             sort=top_artists_order,
             title="Artist",
-            axis=alt.Axis(labels=False),
+            axis=alt.Axis(
+                labels=False,
+            ),
         ),
         x=alt.X(
             "Total Minutes:Q",
@@ -155,6 +130,7 @@ minutes_played_chart = (
             axis=alt.Axis(
                 format="d",
             ),
+            scale=alt.Scale(domain=(0, top_artists_total_minutes.max() * 1.2)),
         ),
         color=alt.Color(
             "artistName:N", title="Artist", sort=top_artists_order, scale=alt.Scale(scheme="viridis"), legend=None
@@ -165,9 +141,10 @@ minutes_played_chart = (
 # Add mark_text as the artists
 minutes_played_chart = minutes_played_chart + minutes_played_chart.mark_text(
     align="left", baseline="middle", dx=3, fontSize=12
-).encode(text="artistName:N")
+).encode(text=alt.Text("artistName:N", title="Artist"))
 
-
+col1.markdown("---")
+col1.subheader("Top Coachella Artists")
 col1.altair_chart(minutes_played_chart, use_container_width=True)
 
 # Make a chart that shows the total artists by day where the artists are colors
@@ -196,21 +173,46 @@ day_chart = day_chart + (
     day_chart.mark_text(color="black", fill="white", fontSize=12, dy=20).encode(
         x=alt.X("Day", title="Day"),
         y=alt.Y("count(artistName):Q", title="Total Artists", stack="zero"),
-        text=alt.Text(
-            "artistName",
-        ),
+        text=alt.Text("artistName", title="Artist"),
         order=alt.Order("rank", sort="ascending"),
     )
 )
 
-
+col2.markdown("---")
+col2.subheader("Which day are they playing?")
 col2.altair_chart(day_chart, use_container_width=True)
 
 
+# Make three streamlit columns with st.metric for each of the following
+col1, col2, col3, col4 = st.columns([4, 2, 3, 2])
+col2.metric("Total Artists", all_data["artistName"].nunique())
+col3.metric("Top Artist", top_artist)
+col4.metric("Total Coachella Minutes", int(all_data["minutesPlayed"].sum()))
+col1.metric("Date Range", f"{all_data['endTime'].min().date()} - {all_data['endTime'].max().date()}")
+
+
 # Make a heatmap of the total minutes played by day and make them select the artist
+st.markdown("---")
+st.title("Artist Explorer")
 
 # Artist heatmap
-heatmap_artist = st.selectbox("Select Artist", ["All"] + all_data["artistName"].unique().tolist())
+col1, col2, col3 = st.columns([1, 3, 3])
+include_all = col1.radio(
+    "Include All Listening Data?",
+    ["Yes", "No"],
+    horizontal=True,
+    index=1,
+    help="If you select 'Yes', the heatmap will include all listening data. If you select 'No', the heatmap will only include listening data for the artists at Coachella",
+)
+if include_all == "Yes":
+    all_data = full_data_copy
+else:
+    all_data = all_data
+
+top_artist_order = all_data.groupby("artistName")["minutesPlayed"].sum().sort_values(ascending=False).index.to_list()
+heatmap_artist = col2.selectbox("Select Artist", ["All"] + top_artist_order)
+sorted_years_reversed = sorted(all_data["year"].unique(), reverse=True)
+year_select = col3.selectbox("Select Year", sorted_years_reversed)
 
 if heatmap_artist == "All":
     heatmap_data = all_data
@@ -218,17 +220,37 @@ else:
     heatmap_data = all_data[all_data["artistName"] == heatmap_artist]
 
 
+# Get the most listened year for the selected artist
+most_listened_year = heatmap_data.groupby("year")["minutesPlayed"].sum().sort_values(ascending=False).index[0]
+heatmap_data = heatmap_data[heatmap_data["year"] == year_select]
+
+# Get number of listened hours in the selected year
+total_listened_hours = heatmap_data["minutesPlayed"].sum() / 60
+
+
+# If there is no data for the selected artist and year, show a message
+if heatmap_data.empty:
+    st.info(f"No listening data for {heatmap_artist} in {year_select}")
+    st.stop()
+
+
 # set the heatmap data as categorical variables so we can fill in 0s for the missing dates
-heatmap_data["week"] = pd.Categorical(values=heatmap_data["endTime"].dt.week, categories=list(range(0, 53)))
-heatmap_data["dow"] = pd.Categorical(values=heatmap_data["endTime"].dt.dayofweek, categories=list(range(0, 7)))
-# heatmap_data["month"] = pd.Categorical(values=heatmap_data["endTime"].dt.month, categories=calendar.month_abbr[1:])
-heatmap_data = heatmap_data.groupby(["week", "dow", "year"]).sum()["minutesPlayed"].reset_index()
+simple_heatmap_data = heatmap_data[
+    ["artistName", "trackName", "endTime", "minutesPlayed", "date", "year", "week", "dow", "day_of_week_str"]
+]
+simple_heatmap_data["week"] = pd.Categorical(
+    values=simple_heatmap_data["endTime"].dt.week, categories=list(range(0, 53))
+)
+simple_heatmap_data["day_of_week_str"] = pd.Categorical(
+    values=simple_heatmap_data["day_of_week_str"],
+    categories=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+    ordered=True,
+)
+heatmap_agg = simple_heatmap_data.groupby(["week", "day_of_week_str", "year"]).sum()["minutesPlayed"].reset_index()
 
 # Pandas cut at 0, between 0 and 1, and greater than 1
-heatmap_data["min_bucket"] = pd.cut(
-    heatmap_data["minutesPlayed"], bins=[-1, 1, 5, 15, 10000], labels=["0 min", "<5 min", "<15 min", ">15 min"]
-)
-st.write(calendar.month_abbr[1:])
+bucket_labels = ["0 min", "1-5 min", "5-15 min", ">15 min"]
+heatmap_agg["min_bucket"] = pd.cut(heatmap_agg["minutesPlayed"], bins=[-1, 1, 5, 15, 10000], labels=bucket_labels)
 
 month_weeks = get_month_weeks(2022)
 
@@ -240,10 +262,22 @@ format_label_expr = "||".join(
     ]
 )
 
+# Extract the date, year, day_of_week from simple_heatmap_data and left join to the heatmap_agg
+heatmap_agg = (
+    heatmap_agg.merge(
+        simple_heatmap_data[["date", "week", "year", "day_of_week_str"]].drop_duplicates(),
+        left_on=["week", "day_of_week_str", "year"],
+        right_on=["week", "day_of_week_str", "year"],
+        how="left",
+    )
+    .drop_duplicates()
+    .sort_values(["date", "day_of_week_str"])
+)
+
 
 # Add the month to heatmap data
 artist_heat = (
-    alt.Chart(heatmap_data)
+    alt.Chart(heatmap_agg)
     .mark_rect(cornerRadius=corner_radius, width=15, height=15)
     .encode(
         # Set ticks at 0-52 and the labels as the months
@@ -257,26 +291,24 @@ artist_heat = (
                 labelAngle=0,
             ),
         ),
-        y=alt.Y("dow:O", title="Day"),
+        y=alt.Y("day_of_week_str:O", title="Day", sort=days_of_week),
         # Set the color to be grey for 0 and green for more than 0
         color=alt.Color(
             "min_bucket:O",
-            title="min_bucket Played",
+            title="Minutes Played",
             scale=alt.Scale(
-                # Use viridis color scheme
+                # Use grey, light blue, blue, dark blue for the colors
                 range=[
                     "#e0e0e0",
-                    "#4daf4a",
-                    "#377eb8",
-                    "#984ea3",
+                    "#90caf9",
+                    "#2196f3",
+                    "#0d47a1",
                 ],
-                domain=["0 min", "<5 min", "<15 min", ">15 min"],
+                domain=bucket_labels,
             ),
         ),
         tooltip=[
-            alt.Tooltip("week:O", title="Week"),
-            alt.Tooltip("dow:O", title="Day"),
-            # minutes played but rounded
+            alt.Tooltip("date:T", title="Date", format="%Y-%m-%d"),
             alt.Tooltip("minutesPlayed:Q", title="Minutes Played", format=".0f"),
         ],
     )
@@ -285,6 +317,40 @@ artist_heat = (
 # Create a second chart of just the months on the x axis to be added to the first chart
 st.altair_chart(artist_heat, use_container_width=True)
 
+artist_data_display = simple_heatmap_data[["artistName", "trackName", "minutesPlayed", "date"]].rename(
+    columns={"artistName": "Artist", "trackName": "Track"}
+)
+
+# Aggregate to get total minutes and times played by artist and track
+artist_data_display = (
+    artist_data_display.groupby(["Artist", "Track"])
+    .agg({"minutesPlayed": "sum", "date": "count"})
+    .rename(columns={"date": "Times Played", "minutesPlayed": "Total Minutes"})
+)
+
+
+# Filter to minutes >= 1
+artist_data_display = artist_data_display[artist_data_display["Total Minutes"] >= 1]
+
+# Format minutes to 1 decimal place
+artist_data_display["Total Minutes"] = artist_data_display["Total Minutes"].apply(lambda x: f"{x:.1f}")
+artist_data_display = artist_data_display.reset_index()
+
+# If artist is selected, drop the artist column
+if heatmap_artist != "All":
+    artist_data_display = artist_data_display.drop(columns=["Artist"])
+
+col1, col2 = st.columns(2)
+col1.subheader("Track Count")
+col1.dataframe(artist_data_display.sort_values(["Times Played", "Total Minutes"], ascending=False))
+
+col2.subheader("Stats")
+
+# get the index + 1 for the selected artist from top_artist_order
+rank = top_artist_order.index(heatmap_artist) + 1
+col2.metric(f"Rank for {heatmap_artist}", f"#{rank}")
+col2.metric(f"Total Hours Listened in {year_select}", f"{total_listened_hours:.1f}")
+col2.metric(f"Most Listened Year for {heatmap_artist}", most_listened_year)
 
 # # Total songs
 # st.write(f"Total songs: {all_data.shape[0]}")
