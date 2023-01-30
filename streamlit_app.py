@@ -3,27 +3,27 @@ import pandas as pd
 import os
 import streamlit as st
 from datetime import datetime, timedelta
+import datetime as dt
 import altair as alt
 import numpy as np
 import calplot as cp
+import calendar
+
 
 st.set_page_config(layout="wide")
 corner_radius = 4
 
-months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-]
+# Get the week number of the first day for each month for the given year
+def get_month_weeks(year):
+    month_weeks = []
+    for month in range(1, 13):
+        if month == 12:
+            first_day = dt.date(year, month, 15)
+        else:
+            first_day = dt.date(year, month, 3)
+        first_day_week = first_day.isocalendar()[1]
+        month_weeks.append(first_day_week)
+    return month_weeks
 
 
 @st.experimental_memo()
@@ -143,14 +143,31 @@ minutes_played_chart = (
     alt.Chart(top_artists_total_minutes.reset_index())
     .mark_bar(width=40, cornerRadius=corner_radius)
     .encode(
-        y=alt.Y("artistName", sort=top_artists_order, title="Artist"),
-        x=alt.X("Total Minutes:Q", title="Total Minutes", axis=alt.Axis(format="d")),
+        y=alt.Y(
+            "artistName",
+            sort=top_artists_order,
+            title="Artist",
+            axis=alt.Axis(labels=False),
+        ),
+        x=alt.X(
+            "Total Minutes:Q",
+            title="Total Minutes",
+            axis=alt.Axis(
+                format="d",
+            ),
+        ),
         color=alt.Color(
             "artistName:N", title="Artist", sort=top_artists_order, scale=alt.Scale(scheme="viridis"), legend=None
         ),
     )
     .properties(height=500)
 )
+# Add mark_text as the artists
+minutes_played_chart = minutes_played_chart + minutes_played_chart.mark_text(
+    align="left", baseline="middle", dx=3, fontSize=12
+).encode(text="artistName:N")
+
+
 col1.altair_chart(minutes_played_chart, use_container_width=True)
 
 # Make a chart that shows the total artists by day where the artists are colors
@@ -159,53 +176,86 @@ day_chart = (
     alt.Chart(all_data[["artistName", "Day", "rank"]].drop_duplicates())
     .mark_bar(cornerRadius=corner_radius)
     .encode(
-        y=alt.Y("Day", title="Day"),
-        # X should be in order of top_artists_order
-        x=alt.X("count(artistName):Q", title="Total Artists"),
+        x=alt.X("Day", title="Day", axis=alt.Axis(labelAngle=0)),
+        y=alt.Y("count(artistName):Q", title="Total Artists"),
         color=alt.Color(
             "artistName:N",
             title="Artist",
             scale=alt.Scale(scheme="viridis"),
             sort=top_artists_order,
+            legend=None,
         ),
         order=alt.Order("rank", sort="ascending"),
         tooltip=[alt.Tooltip("artistName:N", title="Artist")],
     )
     .properties(height=500)
 )
+
+# Add mark_text as the artists
+day_chart = day_chart + (
+    day_chart.mark_text(color="black", fill="white", fontSize=12, dy=20).encode(
+        x=alt.X("Day", title="Day"),
+        y=alt.Y("count(artistName):Q", title="Total Artists", stack="zero"),
+        text=alt.Text(
+            "artistName",
+        ),
+        order=alt.Order("rank", sort="ascending"),
+    )
+)
+
+
 col2.altair_chart(day_chart, use_container_width=True)
 
 
-# calplot
 # Make a heatmap of the total minutes played by day and make them select the artist
 
 # Artist heatmap
 heatmap_artist = st.selectbox("Select Artist", ["All"] + all_data["artistName"].unique().tolist())
+
 if heatmap_artist == "All":
     heatmap_data = all_data
 else:
     heatmap_data = all_data[all_data["artistName"] == heatmap_artist]
 
+
 # set the heatmap data as categorical variables so we can fill in 0s for the missing dates
 heatmap_data["week"] = pd.Categorical(values=heatmap_data["endTime"].dt.week, categories=list(range(0, 53)))
 heatmap_data["dow"] = pd.Categorical(values=heatmap_data["endTime"].dt.dayofweek, categories=list(range(0, 7)))
+# heatmap_data["month"] = pd.Categorical(values=heatmap_data["endTime"].dt.month, categories=calendar.month_abbr[1:])
 heatmap_data = heatmap_data.groupby(["week", "dow", "year"]).sum()["minutesPlayed"].reset_index()
 
 # Pandas cut at 0, between 0 and 1, and greater than 1
 heatmap_data["min_bucket"] = pd.cut(
     heatmap_data["minutesPlayed"], bins=[-1, 1, 5, 15, 10000], labels=["0 min", "<5 min", "<15 min", ">15 min"]
 )
-import calendar
+st.write(calendar.month_abbr[1:])
 
+month_weeks = get_month_weeks(2022)
+
+# reformat the above to be
+format_label_expr = "||".join(
+    [
+        f"datum.value === {month_week} ?  '{month}': ''"
+        for month, month_week in zip(calendar.month_abbr[1:], month_weeks)
+    ]
+)
+
+
+# Add the month to heatmap data
 artist_heat = (
     alt.Chart(heatmap_data)
-    .mark_rect(cornerRadius=corner_radius, width=20, height=15)
+    .mark_rect(cornerRadius=corner_radius, width=15, height=15)
     .encode(
         # Set ticks at 0-52 and the labels as the months
         x=alt.X(
             "week:O",
             title="Week",
-            axis=alt.Axis(values=["Jan"] * 53, tickCount=12, labelAngle=0, labelAlign="right", labels=True),
+            axis=alt.Axis(
+                # If the
+                labelExpr=format_label_expr,
+                # set angle to 0 so the labels are horizontal
+                labelAngle=0,
+            ),
         ),
         y=alt.Y("dow:O", title="Day"),
         # Set the color to be grey for 0 and green for more than 0
@@ -213,18 +263,26 @@ artist_heat = (
             "min_bucket:O",
             title="min_bucket Played",
             scale=alt.Scale(
+                # Use viridis color scheme
                 range=[
                     "#e0e0e0",
-                    "#cddc39",
-                    "#8bc34a",
-                    "#4caf50",
+                    "#4daf4a",
+                    "#377eb8",
+                    "#984ea3",
                 ],
                 domain=["0 min", "<5 min", "<15 min", ">15 min"],
             ),
         ),
+        tooltip=[
+            alt.Tooltip("week:O", title="Week"),
+            alt.Tooltip("dow:O", title="Day"),
+            # minutes played but rounded
+            alt.Tooltip("minutesPlayed:Q", title="Minutes Played", format=".0f"),
+        ],
     )
 )
 
+# Create a second chart of just the months on the x axis to be added to the first chart
 st.altair_chart(artist_heat, use_container_width=True)
 
 
