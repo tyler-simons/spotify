@@ -2,3 +2,8 @@ venv/
 .streamlit/
 .DS_Store
 .cache
+2021/
+2022/
+coachella_artists/
+scrape_spotify.py
+spotify_history.py
