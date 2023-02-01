@@ -1,5 +1,5 @@
 venv/
-.streamlit/
+.streamlit/secrets.toml
 .DS_Store
 .cache
 2021/
