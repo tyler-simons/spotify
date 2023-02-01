@@ -208,7 +208,7 @@ minutes_played_chart = minutes_played_chart + minutes_played_chart.mark_text(
 limit_40 = "(Top 40)" if len(all_data["artistName"].unique()) > 40 else ""
 
 col1.markdown("---")
-col1.subheader(f"Top Coachella Artists {limit_40}")
+col1.subheader(f"My Top Coachella Artists {limit_40}")
 col1.altair_chart(minutes_played_chart, use_container_width=True)
 
 # Make a chart that shows the total artists by day where the artists are colors
