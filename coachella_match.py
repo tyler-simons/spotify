@@ -54,7 +54,7 @@ col2.markdown(
 col1.markdown(
     """
     ## How to use
-    1. Download your Spotify listening history from [here](https://www.spotify.com/us/account/privacy/). Note that this takes about 5 days for the last year or 30 days for your entire listening history
+    1. Download your Spotify listening history from [here](https://www.spotify.com/us/account/privacy/). Note that this takes about 5 days to process.
     2. Unzip the file and attach all of the files like `StreamingHistory#.json` or `endsong_#.json` into the app
     3. View your matches!
     """
