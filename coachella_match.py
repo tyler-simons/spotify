@@ -47,7 +47,7 @@ col1, col2 = st.columns(2)
 col2.markdown(
     """
     ## About
-     There are so many artists playing Coachella it can be hard to keep track of all of them. This app takes your Spotify listening history and matches it with the Coachella 2023 lineup. It then shows you the total minutes you've listened to each match artist, who your top artist is, and plots it all. The bottom section allows you filter by artist to get a bit more detail on your listening history. The app is still in beta so please let me know if you have any feedback or suggestions! 
+     There are **so many** artists playing Coachella that it can be hard to keep track of all of them. This app takes your Spotify listening history and matches it with the Coachella 2023 lineup. It then shows you the total minutes you've listened to each match artist, who your top is, when they're playing and plots it all. We **do not** save your data and all the code is __open source__. The app is still in beta so please let me know if you have any feedback or suggestions! 
     """
 )
 
@@ -60,16 +60,11 @@ col1.markdown(
     """
 )
 
-col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
+col1, col2, col3, col4 = st.columns([5, 1, 3, 1])
 with col2:
     badge("twitter", "TYLERSlMONS", "https://twitter.com/TYLERSlMONS")
-with col3:
-    badge(
-        "github",
-        "tyler-simons",
-    )
 with col4:
-    badge("linkedin", "tyler-simons-phd")
+    badge("github", "tyler-simons/spotify", "https://github.com/tyler-simons/spotify")
 
 
 # Extract the data from the csv as a list of items
