@@ -7,3 +7,4 @@ venv/
 coachella_artists/
 scrape_spotify.py
 spotify_history.py
+coachella_artists.json
