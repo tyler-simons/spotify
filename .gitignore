@@ -6,5 +6,5 @@ venv/
 2022/
 coachella_artists/
 scrape_spotify.py
-spotify_history.py
+# spotify_history.py
 coachella_artists.json
