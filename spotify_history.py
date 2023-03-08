@@ -42,7 +42,7 @@ def build_date_from_pieces(row):
 
 
 # Filter for the minimum minutes played grouped by artist
-st.title("🎁 Spotify Remix 🎶")
+st.title("🎁 Spotify Data Deepdive 🎶")
 st.markdown("Deep dive into your listening habits")
 
 # Write an about section with st.markdown
@@ -67,9 +67,6 @@ col1.markdown(
     3. Run the app and visualize your music history!
     """
 )
-
-# Extract the data from the csv as a list of items
-coachella_lineup = pd.read_csv("./coachella2023.csv")
 
 # Change the column names to be more readable
 change_cols = {
@@ -103,6 +100,7 @@ all_data = all_data.rename(
     columns={i: change_cols[i] for i in change_cols if i in all_data.columns}
 )
 
+
 # Add features
 all_data["endTime"] = pd.to_datetime(all_data["endTime"])
 all_data["endTime"] = pd.Series([(i + timedelta(hours=16)) for i in all_data.endTime])
@@ -113,6 +111,9 @@ all_data["time"] = [i.hour for i in all_data["endTime"]]
 all_data["week"] = all_data["endTime"].dt.isocalendar().week
 all_data["year"] = all_data["endTime"].dt.isocalendar().year
 all_data["minutesPlayed"] = all_data["msPlayed"] / 60000
+
+all_data = all_data[all_data["msPlayed"] > 10000]
+all_data_full_songs = all_data
 
 full_data_copy = all_data
 
@@ -141,7 +142,7 @@ min_year, max_year = all_data["year"].min(), all_data["year"].max()
 
 # Make three streamlit columns with st.metric for each of the following
 col1, col2, col3, col4 = st.columns([4, 2, 3, 2])
-col1.metric("Date Range", f"{min_year} - {max_year}")
+col1.metric("Timespan", f"{min_year} - {max_year}")
 col2.metric("Lifetime Artists", all_data["artistName"].nunique())
 col3.metric(
     "Lifetime Tracks", all_data.groupby(["artistName", "trackName"]).size().reset_index().shape[0]
@@ -194,8 +195,7 @@ with st.expander("Top Artists Raw Data"):
 # Make a chart that shows the top songs by number of listens where listens are more than
 # 20 seconds
 
-# Filter for all songs where the msPlayed is greater than 20 seconds
-all_data_full_songs = all_data[all_data["msPlayed"] > 20000]
+# Filter for all songs where the msPlayed is greater than 10 seconds
 
 TOP_SONG_N = 40
 
