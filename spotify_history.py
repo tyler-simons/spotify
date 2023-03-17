@@ -458,7 +458,7 @@ def build_heatmap(heatmap_data):
     # Add the month to heatmap data
     artist_heat = (
         alt.Chart(heatmap_agg)
-        .mark_rect(cornerRadius=2, width=9, height=10)
+        .mark_rect(cornerRadius=2)
         .encode(
             # Set ticks at 0-52 and the labels as the months
             x=alt.X(
@@ -497,10 +497,8 @@ def build_heatmap(heatmap_data):
                 alt.Tooltip("minutesPlayed:Q", title="Minutes Played", format=".0f"),
             ],
         )
+        .configure_scale(bandPaddingInner=0.3)
         .properties(
-            # Set the width and height of the chart
-            width=800,
-            height=340,
             # Set the title of the chart
             title=f"Minutes Played by Day for {heatmap_artist} in {year_select}",
         )
