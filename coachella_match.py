@@ -68,7 +68,23 @@ with col4:
 
 
 # Extract the data from the csv as a list of items
-coachella_lineup = pd.read_csv("./coachella2023.csv")
+festival = st.radio("Select a festival", ["Coachella", "Outside Lands"])
+if festival == "Coachella":
+    coachella_lineup = pd.read_csv("./coachella2023.csv")
+else:
+    coachella_lineup = pd.read_csv("./outsidelands2023.csv").columns
+    coachella_lineup = pd.DataFrame(coachella_lineup)
+    coachella_lineup.columns = ["Artist"]
+    coachella_lineup["Day"] = "F"
+    coachella_lineup = coachella_lineup.drop_duplicates()
+
+    # Lowercase
+    coachella_lineup["Artist"] = coachella_lineup["Artist"].str.lower().str.strip()
+
+    # Conver to a dataframe
+    coachella_lineup
+st.write(coachella_lineup)
+
 
 # Change the column names to be more readable
 change_cols = {
@@ -78,7 +94,9 @@ change_cols = {
     "ms_played": "msPlayed",
 }
 
-history = st.file_uploader("Upload your Spotify listening history", type="json", accept_multiple_files=True)
+history = st.file_uploader(
+    "Upload your Spotify listening history", type="json", accept_multiple_files=True
+)
 
 
 def validate_upload_files(file: pd.DataFrame):
@@ -144,10 +162,14 @@ all_data = get_all_data()
 
 # Check if the data was uploaded correctly
 if all_data is None:
-    st.error("Please upload only files that match `StreamingHistory#.json` or `endsong_#.json` files")
+    st.error(
+        "Please upload only files that match `StreamingHistory#.json` or `endsong_#.json` files"
+    )
     st.stop()
 
-all_data = all_data.rename(columns={i: change_cols[i] for i in change_cols if i in all_data.columns})
+all_data = all_data.rename(
+    columns={i: change_cols[i] for i in change_cols if i in all_data.columns}
+)
 
 # Add features
 all_data["endTime"] = pd.to_datetime(all_data["endTime"])
@@ -155,6 +177,10 @@ all_data["date"] = [i.date() for i in all_data["endTime"]]
 all_data["minutesPlayed"] = all_data["msPlayed"] / 60000
 
 # Merge the Coachella lineup with the listening history
+all_data["artistName"] = all_data["artistName"].str.lower().str.strip()
+# Check if the artist is in the lineup
+all_data["inLineup"] = all_data["artistName"].isin(coachella_lineup["Artist"])
+all_data["artistName"][all_data["inLineup"]]
 all_data = all_data.merge(coachella_lineup, left_on="artistName", right_on="Artist", how="inner")
 
 # Filter for the minimum minutes played grouped by artist
@@ -165,7 +191,9 @@ grouped_artist_total = all_data.groupby(["artistName"])["minutesPlayed"].sum()
 top_artist = grouped_artist_total.sort_values(ascending=False).index[0]
 
 # Make a chart of the total minutes played by artist and put it in a streamlit column
-top_artists_total_minutes = all_data.groupby(["artistName"])["minutesPlayed"].sum().sort_values(ascending=False)
+top_artists_total_minutes = (
+    all_data.groupby(["artistName"])["minutesPlayed"].sum().sort_values(ascending=False)
+)
 top_artists_total_minutes = top_artists_total_minutes.rename("Total Minutes").reset_index()
 top_artists_order = top_artists_total_minutes["artistName"].to_list()
 
@@ -195,7 +223,11 @@ minutes_played_chart = (
             scale=alt.Scale(domain=(0, top_artists_total_minutes["Total Minutes"].max() * 1.2)),
         ),
         color=alt.Color(
-            "artistName:N", title="Artist", sort=top_artists_order, scale=alt.Scale(scheme="viridis"), legend=None
+            "artistName:N",
+            title="Artist",
+            sort=top_artists_order,
+            scale=alt.Scale(scheme="viridis"),
+            legend=None,
         ),
     )
     .properties(height=500)
@@ -208,7 +240,7 @@ minutes_played_chart = minutes_played_chart + minutes_played_chart.mark_text(
 limit_40 = "(Top 40)" if len(all_data["artistName"].unique()) > 40 else ""
 
 col1.markdown("---")
-col1.subheader(f"My Top Coachella Artists {limit_40}")
+col1.subheader(f"My Top {festival} Artists {limit_40}")
 col1.altair_chart(minutes_played_chart, use_container_width=True)
 
 # Make a chart that shows the total artists by day where the artists are colors
@@ -252,4 +284,6 @@ col1, col2, col3, col4 = st.columns([4, 2, 3, 2])
 col2.metric("Total Artists", all_data["artistName"].nunique())
 col3.metric("Top Artist", top_artist)
 col4.metric("Total Coachella Hours", int(all_data["minutesPlayed"].sum() / 60))
-col1.metric("Date Range", f"{all_data['endTime'].min().date()} - {all_data['endTime'].max().date()}")
+col1.metric(
+    "Date Range", f"{all_data['endTime'].min().date()} - {all_data['endTime'].max().date()}"
+)
