@@ -11,7 +11,7 @@ import calendar
 from streamlit_extras.badges import badge
 
 
-st.set_page_config(layout="centered")
+st.set_page_config(layout="centered", page_title="My Spotify History")
 corner_radius = 4
 days_of_week = [
     "Monday",
@@ -42,12 +42,12 @@ def build_date_from_pieces(row):
 
 
 # Filter for the minimum minutes played grouped by artist
-st.title("🎁 Spotify Data Deepdive 🎶")
-st.markdown("Deep dive into your listening habits")
+st.title("🎁 Spotify History 🎶")
+st.markdown("Deep dive into your all-time listening data.")
 
 # Write an about section with st.markdown
 col1, col2 = st.columns(2)
-col2.markdown(
+col1.markdown(
     """
     ## About
     This app helps you dig into your\
@@ -58,15 +58,15 @@ col2.markdown(
     """
 )
 with col2:
-    badge("twitter", "TYLERSlMONS", "https://twitter.com/TYLERSlMONS")
-col1.markdown(
-    """
+    col2.markdown(
+        """
     ## How to use
     1. Download your Spotify listening history from [here](https://www.spotify.com/us/account/privacy/). Note that this takes about 5 days for the last year or 30 days for your entire listening history
     2. Unzip the file and attach all of the files like `StreamingHistory#.json` or `endsong_#.json` into the app
     3. Run the app and visualize your music history!
     """
-)
+    )
+    badge("twitter", "TYLERSlMONS", "https://twitter.com/TYLERSlMONS")
 
 # Change the column names to be more readable
 change_cols = {
