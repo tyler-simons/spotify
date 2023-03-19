@@ -53,8 +53,7 @@ col1.markdown(
     This app helps you dig into your\
      listening history to help you learn about yourself. It shows you your \
     top songs and artists and visualizes your listening history. We **do not** \
-    save your data and all the code is __open source__. The app is still in beta \
-    . I hope you enjoy it!
+    save your data and all the code is __open source__. I hope you enjoy it!
     """
 )
 with col2:
