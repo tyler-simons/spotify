@@ -136,12 +136,15 @@ full_data_copy = all_data
 all_data = all_data.groupby("artistName").filter(lambda x: x["minutesPlayed"].sum() > 5)
 
 # Get the top artist
-grouped_artist_total = all_data.groupby(["artistName"])["minutesPlayed"].sum()
+grouped_artist_total = all_data.groupby(["artistName"])["minutesPlayed"].sum(numeric_only=True)
 top_artist = grouped_artist_total.sort_values(ascending=False).index[0]
 
 # Make a chart of the total minutes played by artist and put it in a streamlit column
 top_artists_total_hours = (
-    all_data.groupby(["artistName"])["minutesPlayed"].sum().sort_values(ascending=False) / 60
+    all_data.groupby(["artistName"])["minutesPlayed"]
+    .sum(numeric_only=True)
+    .sort_values(ascending=False)
+    / 60
 )
 top_artists_total_hours = top_artists_total_hours.rename("Hours", inplace=True)
 
@@ -274,7 +277,7 @@ col2, col3 = st.columns(2)
 
 top_artist_order = (
     all_data.groupby("artistName")["minutesPlayed"]
-    .sum()
+    .sum(numeric_only=True)
     .sort_values(ascending=False)
     .index.to_list()
 )
@@ -301,11 +304,17 @@ total_unique_tracks = heatmap_data["trackName"].nunique()
 
 # Top song all time for the aritst
 top_song = (
-    heatmap_data.groupby("trackName")["minutesPlayed"].sum().sort_values(ascending=False).index[0]
+    heatmap_data.groupby("trackName")["minutesPlayed"]
+    .sum(numeric_only=True)
+    .sort_values(ascending=False)
+    .index[0]
 )
 
 most_listened_year = (
-    heatmap_data.groupby("year")["minutesPlayed"].sum().sort_values(ascending=False).index[0]
+    heatmap_data.groupby("year")["minutesPlayed"]
+    .sum(numeric_only=True)
+    .sort_values(ascending=False)
+    .index[0]
 )
 
 # Artist bar chart over time
@@ -424,7 +433,7 @@ def build_heatmap(heatmap_data):
     )
     heatmap_agg = (
         simple_heatmap_data.groupby(["week", "day_of_week_str", "year"])
-        .sum()["minutesPlayed"]
+        .sum(numeric_only)["minutesPlayed"]
         .reset_index()
     )
 
@@ -522,11 +531,10 @@ st.subheader("Stats")
 col1, col2, col3 = st.columns(3)
 
 # Rank for the year
-st.write(all_data.dtypes)
 yearly_rank = (
     all_data[all_data["year"] == year_select]
     .groupby(["artistName"])
-    .sum()
+    .sum(numeric_only=True)
     .sort_values("minutesPlayed", ascending=False)
     .reset_index()
 )
