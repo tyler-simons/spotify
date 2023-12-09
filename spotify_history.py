@@ -315,7 +315,7 @@ else:
     all_artist_raw = all_data.query(f"artistName == '{heatmap_artist}'")
 all_artist = all_artist_raw.copy()
 all_artist["year_month"] = pd.to_datetime(all_artist["date"]).dt.strftime("%Y-%m")
-all_artist = all_artist.groupby(["year_month"], as_index=False).sum()
+all_artist = all_artist.groupby(["year_month"], as_index=False).sum(numeric_only=True)
 
 bar_chart = (
     alt.Chart(all_artist)
