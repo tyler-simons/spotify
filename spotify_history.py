@@ -123,7 +123,7 @@ all_data["dow"] = [i.weekday() for i in all_data["endTime"]]
 all_data["day_of_week_str"] = all_data["dow"].apply(lambda x: calendar.day_name[x])
 all_data["time"] = [i.hour for i in all_data["endTime"]]
 all_data["week"] = all_data["endTime"].dt.isocalendar().week
-all_data["year"] = all_data["endTime"].dt.isocalendar().year
+all_data["year"] = all_data["endTime"].dt.isocalendar().year.astype(int)
 all_data["minutesPlayed"] = all_data["msPlayed"] / 60000
 
 all_data = all_data[all_data["msPlayed"] > 10000]
