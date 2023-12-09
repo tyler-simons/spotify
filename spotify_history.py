@@ -522,6 +522,7 @@ st.subheader("Stats")
 col1, col2, col3 = st.columns(3)
 
 # Rank for the year
+st.write(all_data.dtypes)
 yearly_rank = (
     all_data[all_data["year"] == year_select]
     .groupby(["artistName"])
