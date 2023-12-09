@@ -423,21 +423,22 @@ def build_heatmap(heatmap_data):
             "day_of_week_str",
         ]
     ]
-    st.write(simple_heatmap_data)
-    st.write(simple_heatmap_data.dtypes)
     simple_heatmap_data["week"] = pd.Categorical(
-        values=simple_heatmap_data["endTime"].dt.strftime("%U"), categories=list(range(0, 53))
+        values=pd.to_datetime(simple_heatmap_data["endTime"]).dt.isocalendar().week,
+        categories=list(range(0, 53)),
     )
     simple_heatmap_data["day_of_week_str"] = pd.Categorical(
         values=simple_heatmap_data["day_of_week_str"],
         categories=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
         ordered=True,
     )
+    st.write(simple_heatmap_data)
     heatmap_agg = (
         simple_heatmap_data.groupby(["week", "day_of_week_str", "year"])
-        .sum(numeric_only=True)["minutesPlayed"]
+        .sum()["minutesPlayed"]
         .reset_index()
     )
+    st.write(heatmap_agg)
 
     # Pandas cut at 0, between 0 and 1, and greater than 1
     bucket_labels = ["0 min", "1-5 min", "5-15 min", "15-60 min", "60+ min"]
