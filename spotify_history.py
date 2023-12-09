@@ -11,7 +11,7 @@ import calendar
 from streamlit_extras.badges import badge
 
 
-st.set_page_config(layout="centered", page_title="My Spotify History")
+st.set_page_config(layout="wide", page_title="My Spotify History")
 corner_radius = 4
 days_of_week = [
     "Monday",
@@ -22,6 +22,7 @@ days_of_week = [
     "Saturday",
     "Sunday",
 ]
+
 
 # Get the week number of the first day for each month for the given year
 def get_month_weeks(year):
@@ -94,7 +95,21 @@ def get_all_data():
 
 
 # Rename if the column name is in the dictionary
-all_data = get_all_data()
+if len(history) == 0:
+    # Get the example data from the example_data folder
+    example_data = []
+    for i in os.listdir("example_data"):
+        if i.endswith(".json"):
+            example_data.append(pd.read_json(f"example_data/{i}"))
+    all_data = pd.concat(example_data).reset_index()
+    st.warning(
+        """⚠️ **Showing example data below.
+        Upload your Spotify listening history to see your matches!** ⚠️"""
+    )
+else:
+    all_data = get_all_data()
+
+
 all_data = all_data.rename(
     columns={i: change_cols[i] for i in change_cols if i in all_data.columns}
 )
@@ -142,11 +157,9 @@ min_year, max_year = all_data["year"].min(), all_data["year"].max()
 # Make three streamlit columns with st.metric for each of the following
 col1, col2, col3, col4 = st.columns([4, 2, 3, 2])
 col1.metric("Timespan", f"{min_year} - {max_year}")
-col2.metric("Lifetime Artists", all_data["artistName"].nunique())
-col3.metric(
-    "Lifetime Tracks", all_data.groupby(["artistName", "trackName"]).size().reset_index().shape[0]
-)
-col4.metric("Lifetime Hours", int(all_data["minutesPlayed"].sum() / 60))
+col2.metric("Artists", all_data["artistName"].nunique())
+col3.metric("Tracks", all_data.groupby(["artistName", "trackName"]).size().reset_index().shape[0])
+col4.metric("Hours", int(all_data["minutesPlayed"].sum() / 60))
 
 
 # Artist top hours chart
@@ -186,7 +199,7 @@ minutes_played_chart = minutes_played_chart + minutes_played_chart.mark_text(
 ).encode(text=alt.Text("artistName:N", title="Artist"))
 
 st.markdown("---")
-st.subheader("Top Lifetime Artists")
+st.subheader("Top Artists")
 st.altair_chart(minutes_played_chart, use_container_width=True)
 with st.expander("Top Artists Raw Data"):
     st.write(top_artists_total_hours)
@@ -196,7 +209,7 @@ with st.expander("Top Artists Raw Data"):
 
 # Filter for all songs where the msPlayed is greater than 10 seconds
 
-TOP_SONG_N = 40
+TOP_SONG_N = 50
 
 top_songs = (
     all_data_full_songs.groupby(["artistName", "trackName"])["msPlayed"]
@@ -233,7 +246,7 @@ day_chart = (
             alt.Tooltip("Listens:Q", title="# Plays"),
         ],
     )
-    .properties(height=500)
+    .properties(height=600)
 )
 
 # Add mark_text as the artists
@@ -247,7 +260,7 @@ day_chart = day_chart + (
 )
 
 st.markdown("---")
-st.subheader("Top 40 Lifetime Songs")
+st.subheader("Top 40 Songs")
 st.altair_chart(day_chart, use_container_width=True)
 with st.expander("Top Song Raw Data"):
     st.write(top_songs)
@@ -268,7 +281,7 @@ top_artist_order = (
 
 # Select artist
 heatmap_artist = st.selectbox("Select Artist", ["All"] + top_artist_order)
-st.title(f"Lifetime Analysis for {heatmap_artist}")
+st.title(f"Analysis for {heatmap_artist}")
 st.write("Dig a bit deeper into your favorite artists")
 
 
@@ -327,11 +340,11 @@ bar_chart = (
 col0, col1, col2, col3 = st.columns(4)
 # Round total_lifetime_hours to 2 decimal places
 if heatmap_artist == "All":
-    col0.metric(f"Lifetime Rank", "-")
+    col0.metric(f"Rank", "-")
 else:
-    col0.metric(f"Lifetime Rank", f"{top_artist_order.index(heatmap_artist) + 1}")
+    col0.metric(f"Rank", f"{top_artist_order.index(heatmap_artist) + 1}")
 
-col1.metric("Total Lifetime Hours", f"{total_lifetime_hours:.2f}")
+col1.metric("Total Hours", f"{total_lifetime_hours:.2f}")
 col2.metric("Total Unique Tracks", total_unique_tracks)
 col3.metric("Most Listened Year", most_listened_year)
 
@@ -387,7 +400,6 @@ total_listened_hours = heatmap_data["minutesPlayed"].sum() / 60
 
 
 def build_heatmap(heatmap_data):
-
     # set the heatmap data as categorical variables so we can fill in 0s for the missing dates
     simple_heatmap_data = heatmap_data[
         [
