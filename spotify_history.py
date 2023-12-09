@@ -435,7 +435,7 @@ def build_heatmap(heatmap_data):
     st.write(simple_heatmap_data)
     heatmap_agg = (
         simple_heatmap_data.groupby(["week", "day_of_week_str", "year"])
-        .sum()["minutesPlayed"]
+        .sum(numeric_only=True)["minutesPlayed"]
         .reset_index()
     )
     st.write(heatmap_agg)
