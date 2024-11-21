@@ -201,6 +201,7 @@ minutes_played_chart = minutes_played_chart + minutes_played_chart.mark_text(
     align="left", baseline="middle", dx=3, fontSize=12
 ).encode(text=alt.Text("artistName:N", title="Artist"))
 
+
 st.markdown("---")
 st.subheader("Top Artists")
 st.altair_chart(minutes_played_chart, use_container_width=True)
@@ -283,12 +284,12 @@ top_artist_order = (
 )
 
 # Select artist
-heatmap_artist = st.selectbox("Select Artist", ["All"] + top_artist_order)
+heatmap_artist = st.selectbox("Select Artist", ["All Artists"] + top_artist_order)
 st.title(f"Analysis for {heatmap_artist}")
 st.write("Dig a bit deeper into your favorite artists")
 
 
-if heatmap_artist == "All":
+if heatmap_artist == "All Artists":
     heatmap_data = all_data
 else:
     heatmap_data = all_data[all_data["artistName"] == heatmap_artist]
@@ -318,7 +319,7 @@ most_listened_year = (
 )
 
 # Artist bar chart over time
-if heatmap_artist == "All":
+if heatmap_artist == "All Artists":
     all_artist_raw = all_data
 else:
     all_artist_raw = all_data.query(f"artistName == '{heatmap_artist}'")
@@ -348,7 +349,7 @@ bar_chart = (
 # Two columns for the stats
 col0, col1, col2, col3 = st.columns(4)
 # Round total_lifetime_hours to 2 decimal places
-if heatmap_artist == "All":
+if heatmap_artist == "All Artists":
     col0.metric(f"Rank", "-")
 else:
     col0.metric(f"Rank", f"{top_artist_order.index(heatmap_artist) + 1}")
@@ -543,7 +544,7 @@ yearly_rank["rank"] = yearly_rank["minutesPlayed"].rank(ascending=False)
 
 yearly_rank = yearly_rank[yearly_rank["artistName"] == heatmap_artist]
 
-if heatmap_artist == "All":
+if heatmap_artist == "All Artists":
     col1.metric(f"Artist Rank in {year_select}", "-")
 else:
     col1.metric(f"Artist Rank in {year_select}", f"{yearly_rank['rank'].values[0]:.0f}")
