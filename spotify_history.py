@@ -95,19 +95,19 @@ def get_all_data():
 
 
 # Rename if the column name is in the dictionary
-if len(history) == 0:
-    # Get the example data from the example_data folder
-    example_data = []
-    for i in os.listdir("example_data"):
-        if i.endswith(".json"):
-            example_data.append(pd.read_json(f"example_data/{i}"))
-    all_data = pd.concat(example_data).reset_index()
-    st.warning(
-        """⚠️ **Showing example data below.
-        Upload your Spotify listening history to see your matches!** ⚠️"""
-    )
-else:
-    all_data = get_all_data()
+# if len(history) == 0:
+#     # Get the example data from the example_data folder
+#     example_data = []
+#     for i in os.listdir("example_data"):
+#         if i.endswith(".json"):
+#             example_data.append(pd.read_json(f"example_data/{i}"))
+#     all_data = pd.concat(example_data).reset_index()
+#     st.warning(
+#         """⚠️ **Showing example data below.
+#         Upload your Spotify listening history to see your matches!** ⚠️"""
+#     )
+# else:
+all_data = get_all_data()
 
 
 all_data = all_data.rename(
