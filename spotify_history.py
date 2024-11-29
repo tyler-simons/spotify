@@ -12,6 +12,7 @@ from streamlit_extras.badges import badge
 
 
 st.set_page_config(layout="wide", page_title="My Spotify History")
+pd.set_option("mode.chained_assignment", None)
 corner_radius = 4
 days_of_week = [
     "Monday",
@@ -86,7 +87,13 @@ def get_all_data():
     if history:
         listening_history = []
         for i in history:
-            listening_history.append(pd.read_json(path_or_buf=i))
+            try:
+                listening_history.append(pd.read_json(path_or_buf=i))
+            except:
+                st.error(
+                    "There was an error reading the file. Please remove the file and try again."
+                )
+                st.stop()
         all_data = pd.concat(listening_history).reset_index()
         return all_data
     else:
