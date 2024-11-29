@@ -91,7 +91,7 @@ def get_all_data():
                 listening_history.append(pd.read_json(path_or_buf=i))
             except:
                 st.error(
-                    "There was an error reading the file. Please remove the file and try again."
+                    f"There was an error reading the file {i.name}. Please remove the file and try again."
                 )
                 st.stop()
         all_data = pd.concat(listening_history).reset_index()
