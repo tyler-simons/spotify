@@ -82,7 +82,7 @@ history = st.file_uploader(
 )
 
 
-# @st.experimental_memo
+@st.cache_data()
 def get_all_data():
     if history:
         listening_history = []
