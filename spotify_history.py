@@ -105,14 +105,18 @@ def main():
         st.stop()
         
     st.divider()
-    
+
     if not uploaded_files:
-        st.caption("Showing example listening history. Upload your own files to explore your data.")
+        st.caption("Example listening history · Upload your own files to explore your data.")
+    st.caption(f"Showing {start_date:%b %d, %Y} – {end_date:%b %d, %Y}")
 
     # --- Section 1: Executive Summary ---
     
     # Calculate High Level Stats
     music_df = get_valid_music_df(df) # Filtered for music
+    if music_df.empty:
+        st.info("No music tracks were found in this date range. Try another range or upload a different history file.")
+        st.stop()
     total_min = music_df["minutesPlayed"].sum()
     total_hours = total_min / 60
     
@@ -127,7 +131,7 @@ def main():
     
     avg_daily = total_hours / df['date'].nunique() if df['date'].nunique() > 0 else 0
     
-    cols[0].metric("Total Minutes", f"{int(total_min):,}")
+    cols[0].metric("Listening time", f"{total_hours:,.1f} hrs", help="Total time spent listening to music in the selected period.")
     cols[1].metric("Unique Artists", f"{unique_artists:,}")
     cols[2].metric("Unique Tracks", f"{unique_tracks:,}")
     cols[3].metric("Active Days", f"{df['date'].nunique()}")
@@ -269,4 +273,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
