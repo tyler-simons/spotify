@@ -23,23 +23,6 @@ from src.visualizations import (
 # Config
 st.set_page_config(layout="wide", page_title="Listening Report", page_icon=":material/water_drop:")
 
-# Shared ocean-inspired portfolio styling.
-st.markdown("""
-<style>
-.stApp { background: radial-gradient(ellipse at 85% 0%, #d6f0f7 0%, transparent 32%), #f4f9fb; }
-.block-container { padding-top: 3rem; max-width: 1400px; }
-h1, h2, h3, h4 { color: #102c49 !important; letter-spacing: -0.03em; }
-h1 { font-weight: 700 !important; }
-div[data-testid="stMetric"], div[data-testid="stVerticalBlockBorderWrapper"] > div {
-    background: rgba(255, 255, 255, .78); border: 1px solid #d9eaf0;
-    border-radius: 20px; box-shadow: 0 12px 38px rgba(22, 66, 88, .06);
-}
-div[data-testid="stMetric"] { padding: 20px; }
-div[data-testid="stMetricLabel"] { color: #527387; }
-div[data-testid="stMetricValue"] { color: #123c58; }
-div[data-testid="stExpander"] { border-radius: 16px; border-color: #d9eaf0; }
-</style>
-""", unsafe_allow_html=True)
 
 def main():
     st.caption("TYLER SIMONS  /  DATA EXPLORATIONS")
