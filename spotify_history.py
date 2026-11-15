@@ -23,45 +23,27 @@ from src.visualizations import (
 # Config
 st.set_page_config(layout="wide", page_title="Listening Report", page_icon=":material/water_drop:")
 
-# CSS for Underwater Professional Style
+# Shared ocean-inspired portfolio styling.
 st.markdown("""
 <style>
-    /* .stApp background is handled by config.toml [theme] */
-    
-    /* Headings (Halocline Navy) */
-    h1, h2, h3, h4, h5, h6 {
-        color: #0E215C !important;
-        font-family: 'Helvetica Neue', sans-serif;
-    }
-    
-    /* Metrics (Bubbles) */
-    div[data-testid="stMetric"] {
-        background-color: #ffffff;
-        padding: 15px;
-        border-radius: 10px;
-        border: 1px solid #E0E0E0;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    }
-    
-    /* Charts (White Cards) */
-    .stAltairChart {
-        background-color: #ffffff;
-        padding: 20px;
-        border-radius: 12px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        border: 1px solid #e0e0e0;
-    }
-    
-    /* Expander styling */
-    .streamlit-expanderHeader {
-        background-color: #ffffff;
-        border-radius: 8px;
-    }
+.stApp { background: radial-gradient(ellipse at 85% 0%, #d6f0f7 0%, transparent 32%), #f4f9fb; }
+.block-container { padding-top: 3rem; max-width: 1400px; }
+h1, h2, h3, h4 { color: #102c49 !important; letter-spacing: -0.03em; }
+h1 { font-weight: 700 !important; }
+div[data-testid="stMetric"], div[data-testid="stVerticalBlockBorderWrapper"] > div {
+    background: rgba(255, 255, 255, .78); border: 1px solid #d9eaf0;
+    border-radius: 20px; box-shadow: 0 12px 38px rgba(22, 66, 88, .06);
+}
+div[data-testid="stMetric"] { padding: 20px; }
+div[data-testid="stMetricLabel"] { color: #527387; }
+div[data-testid="stMetricValue"] { color: #123c58; }
+div[data-testid="stExpander"] { border-radius: 16px; border-color: #d9eaf0; }
 </style>
 """, unsafe_allow_html=True)
 
 def main():
-    st.title(":material/scuba_diving: Spotify Dive Report")
+    st.caption("TYLER SIMONS  /  DATA EXPLORATIONS")
+    st.title("Spotify Dive Report")
     st.markdown("Upload your streaming history to visualize your trends, discover top artists, and analyze your listening habits. *Created by [halocline](https://open.spotify.com/artist/5ofIlDx8lax1NOi2stXaTn).*")
     
     # --- Top Controls (Framed) ---
@@ -141,6 +123,9 @@ def main():
         
     st.divider()
     
+    if not uploaded_files:
+        st.caption("Showing example listening history. Upload your own files to explore your data.")
+
     # --- Section 1: Executive Summary ---
     
     # Calculate High Level Stats
@@ -301,3 +286,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
