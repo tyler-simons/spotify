@@ -127,29 +127,16 @@ def chart_play_history(df: pd.DataFrame, title: str, date_range: tuple = None) -
     
     chart = (
         alt.Chart(merged_df)
-        .mark_area(
-            opacity=0.8,
-            line={'color': '#00A68F'}, # Brand Teal Line
-            color=alt.Gradient(
-                gradient='linear',
-                stops=[alt.GradientStop(color='#00A68F', offset=0),   # Brand Teal
-                       alt.GradientStop(color='#0E215C', offset=1)],  # Brand Navy
-                x1=1, x2=1, y1=1, y2=0
-            ) 
-        )
+        .mark_bar(color="#147eb2", cornerRadiusTopLeft=3, cornerRadiusTopRight=3)
         .encode(
-            x=alt.X("YearMonth:O", title="Date", sort=None), # Ordinal axis, preserve order
-            y=alt.Y("minutesPlayed:Q", title="Minutes Played", axis=alt.Axis(format=".0f")),
+            x=alt.X("yearmonth(month_start):T", title="Month", axis=alt.Axis(format="%b %Y", labelAngle=-45)),
+            y=alt.Y("minutesPlayed:Q", title="Minutes played", scale=alt.Scale(zero=True), axis=alt.Axis(format=",.0f", grid=True, tickCount=5)),
             tooltip=[
-                alt.Tooltip("YearMonth:O", title="Date"),
-                alt.Tooltip("minutesPlayed:Q", title="Minutes Played", format=".0f"),
+                alt.Tooltip("yearmonth(month_start):T", title="Month", format="%B %Y"),
+                alt.Tooltip("minutesPlayed:Q", title="Minutes played", format=",.0f"),
             ],
         )
-        .properties(
-            width=800,
-            height=400,
-            title=title,
-        )
+        .properties(height=360, title=title)
     )
     return chart
 
@@ -285,3 +272,4 @@ def chart_platform_usage(df: pd.DataFrame) -> alt.Chart:
         .properties(title="Devices")
     )
     return chart
+
