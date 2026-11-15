@@ -8,7 +8,6 @@ import altair as alt
 import numpy as np
 import calplot as cp
 import calendar
-from streamlit_extras.badges import badge
 
 
 st.set_page_config(layout="wide")
@@ -62,9 +61,9 @@ col1.markdown(
 
 col1, col2, col3, col4 = st.columns([5, 1, 3, 1])
 with col2:
-    badge("twitter", "TYLERSlMONS", "https://twitter.com/TYLERSlMONS")
+    st.link_button("Twitter", "https://twitter.com/TYLERSlMONS")
 with col4:
-    badge("github", "tyler-simons/spotify", "https://github.com/tyler-simons/spotify")
+    st.link_button("GitHub", "https://github.com/tyler-simons/spotify")
 
 
 # Extract the data from the csv as a list of items
