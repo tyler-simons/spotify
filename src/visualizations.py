@@ -142,24 +142,35 @@ def chart_play_history(df: pd.DataFrame, title: str, date_range: tuple = None) -
     return chart
 
 def chart_calendar_heatmap(df: pd.DataFrame, year: int, artist_name: str) -> alt.Chart:
-    """Daily music minutes, aligned to calendar dates rather than ISO years."""
+    """Daily listening by calendar date; dates outside the observed span stay blank."""
     year_df = df[pd.to_datetime(df["date"]).dt.year == year].copy()
     daily = year_df.groupby("date", as_index=False)["minutesPlayed"].sum()
     daily["date"] = pd.to_datetime(daily["date"])
-    # Only represent the observed span; do not imply that dates outside the export are zero.
     dates = pd.DataFrame({"date": pd.date_range(daily["date"].min(), daily["date"].max())})
     daily = dates.merge(daily, on="date", how="left").fillna({"minutesPlayed": 0})
     jan1 = pd.Timestamp(year=year, month=1, day=1)
     daily["week_index"] = ((daily["date"].dt.dayofyear - 1 + jan1.weekday()) // 7).astype(int)
     daily["weekday"] = daily["date"].dt.day_name()
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    return (alt.Chart(daily).mark_rect(cornerRadius=2).encode(
-        x=alt.X("week_index:O", title="Week of year", axis=alt.Axis(labelAngle=0, tickCount=12)),
-        y=alt.Y("weekday:O", title="Day of week", sort=days),
-        color=alt.Color("minutesPlayed:Q", title="Minutes", scale=alt.Scale(scheme="blues", zero=True)),
+    labels = ["0", "< 30", "30–<60", "60–<120", "120–<240", "240+"]
+    daily["band"] = pd.cut(daily["minutesPlayed"], bins=[-0.01, 0, 30, 60, 120, 240, float("inf")], labels=labels, right=False, include_lowest=True)
+    # An exact zero needs its own band when using left-closed intervals.
+    daily["band"] = daily["band"].astype(object)
+    daily.loc[daily["minutesPlayed"] == 0, "band"] = "0"
+    starts = [pd.Timestamp(year=year, month=m, day=1) for m in range(1, 13)]
+    month_weeks = [int((d.dayofyear - 1 + jan1.weekday()) // 7) for d in starts]
+    expr = " ".join(f"datum.value == {week} ? '{calendar.month_abbr[i]}' :" for i, week in enumerate(month_weeks, 1)) + " ''"
+    max_week = int((pd.Timestamp(year=year, month=12, day=31).dayofyear - 1 + jan1.weekday()) // 7)
+    return (alt.Chart(daily).mark_rect(cornerRadius=2, strokeWidth=1, stroke="#ffffff").encode(
+        x=alt.X("week_index:O", title=None, scale=alt.Scale(domain=list(range(max_week + 1))),
+                axis=alt.Axis(values=month_weeks, labelExpr=expr, labelAngle=0, labelOverlap=False, ticks=False, domain=False)),
+        y=alt.Y("weekday:O", title=None, sort=days, axis=alt.Axis(labelOverlap=False, labelLimit=90, ticks=False, domain=False)),
+        color=alt.Color("band:N", title="Minutes per day", sort=labels,
+                        scale=alt.Scale(domain=labels, range=["#e3edf1", "#bfdde9", "#85c2dc", "#4e9fc4", "#1c73a4", "#104667"]),
+                        legend=alt.Legend(orient="bottom", direction="horizontal")),
         tooltip=[alt.Tooltip("date:T", title="Date", format="%b %d, %Y"),
                  alt.Tooltip("minutesPlayed:Q", title="Minutes played", format=",.1f")]
-    ).properties(height=180, title=f"Daily listening · {artist_name} · {year}"))
+    ).properties(height=320, title=f"Daily listening · {artist_name} · {year}"))
 
 
 def chart_hourly_activity(df: pd.DataFrame) -> alt.Chart:
