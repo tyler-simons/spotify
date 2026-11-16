@@ -6,6 +6,8 @@ Explore listening history through an interactive report of artists, tracks, list
 
 The report starts with example data. Upload your own Spotify streaming history JSON files to explore your listening instead. The app also includes an artist deep dive and timezone controls.
 
+Example data in `example_data_2/` has identifying fields removed (IP addresses, usernames, user agents, and device identifiers). Artist, track, album, play length, and timestamp fields are kept.
+
 ## Run locally
 
 Use Python 3.10 or newer and [uv](https://docs.astral.sh/uv/):
