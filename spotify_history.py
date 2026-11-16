@@ -27,16 +27,17 @@ st.set_page_config(layout="wide", page_title="Listening Report", page_icon=":mat
 def main():
     st.caption("TYLER SIMONS  /  DATA EXPLORATIONS")
     st.title("Spotify Dive Report")
-    st.markdown("Upload your streaming history to visualize your trends, discover top artists, and analyze your listening habits. *Created by [halocline](https://open.spotify.com/artist/5ofIlDx8lax1NOi2stXaTn).*")
+    st.write("Explore the artists, tracks, and rhythms in your listening history.")
+    st.caption("A data exploration by [Tyler Simons](https://tylersimons.com/) · Music by [halocline](https://open.spotify.com/artist/5ofIlDx8lax1NOi2stXaTn)")
     
     # --- Top Controls (Framed) ---
     with st.container(border=True):
-        st.subheader(":material/settings: Report Settings")
+        st.subheader("Build your report")
         
         c1, c2 = st.columns([1, 1])
         
         with c1:
-            st.markdown("**1. Upload Data**")
+            st.markdown("**Listening history**")
             uploaded_files = st.file_uploader(
                 "Select your `StreamingHistory` JSON files", 
                 type="json", 
@@ -53,7 +54,7 @@ def main():
             """)
             
         with c2:
-            st.markdown("**2. Filter Dates**")
+            st.markdown("**Time range**")
             
             # --- Data Loading ---
             if not uploaded_files:
@@ -65,8 +66,15 @@ def main():
                 st.warning("Upload data to generate your report.")
                 st.stop()
                 
-            # Process Data
-            df = process_data(raw_df)
+            required = {"endTime", "msPlayed", "artistName", "trackName"}
+            if not required.issubset(raw_df.columns):
+                st.error("These files do not look like Spotify streaming history. Upload the StreamingHistory JSON files from your Spotify data export.")
+                st.stop()
+            try:
+                df = process_data(raw_df)
+            except (ValueError, TypeError, KeyError):
+                st.error("We could not read this listening history. Check the files and try again.")
+                st.stop()
 
             min_date = df["date"].min()
             max_date = df["date"].max()
@@ -108,7 +116,7 @@ def main():
 
     if not uploaded_files:
         st.caption("Example listening history · Upload your own files to explore your data.")
-    st.caption(f"Showing {start_date:%b %d, %Y} – {end_date:%b %d, %Y}")
+    st.caption(f"Showing {start_date:%b %d, %Y} – {end_date:%b %d, %Y} · UTC dates · Ranges end at the latest entry in the export.")
 
     # --- Section 1: Executive Summary ---
     
@@ -121,36 +129,39 @@ def main():
     total_hours = total_min / 60
     
     unique_artists = music_df["artistName"].nunique()
-    unique_tracks = music_df["trackName"].nunique()
+    unique_tracks = music_df[["artistName", "trackName"]].drop_duplicates().shape[0]
     
     # Enhanced Metrics Display
-    st.subheader(":material/analytics: At a Glance")
+    st.subheader("At a glance")
+    st.caption("Music plays longer than 30 seconds. Listening time is summed across qualifying plays.")
     
     # Single row of 5 key metrics
     cols = st.columns(5)
     
-    avg_daily = total_hours / df['date'].nunique() if df['date'].nunique() > 0 else 0
+    active_days = music_df['date'].nunique()
+    avg_daily = total_hours / active_days if active_days else 0
     
     cols[0].metric("Listening time", f"{total_hours:,.1f} hrs", help="Total time spent listening to music in the selected period.")
-    cols[1].metric("Unique Artists", f"{unique_artists:,}")
-    cols[2].metric("Unique Tracks", f"{unique_tracks:,}")
-    cols[3].metric("Active Days", f"{df['date'].nunique()}")
-    cols[4].metric("Avg Daily Listen", f"{avg_daily:.1f} hrs")
+    cols[1].metric("Artists", f"{unique_artists:,}")
+    cols[2].metric("Tracks", f"{unique_tracks:,}")
+    cols[3].metric("Active days", f"{active_days:,}")
+    cols[4].metric("Per active day", f"{avg_daily:.1f} hrs", help="Listening time divided by days with a qualifying music play.")
 
     st.divider()
 
     # --- Section 2: Listening Habits ---
-    st.header(":material/calendar_month: Listening Habits")
+    st.header("Listening habits")
     
     # Calculate stats first to determine layout
-    platform_stats = get_platform_stats(df)
+    platform_stats = get_platform_stats(music_df)
     has_known_devices = platform_stats[platform_stats["Platform"] != "Unknown"].shape[0] > 0
     
     if has_known_devices:
         col_habits_1, col_habits_2 = st.columns([2, 1])
         
         with col_habits_1:
-            st.subheader("Activity Over Time")
+            st.subheader("Listening over time")
+            st.caption("Minutes of music per month · partial months reflect the selected date range.")
             history_chart = chart_play_history(music_df, "", date_range=selected_dates)
             st.altair_chart(history_chart, use_container_width=True)
             
@@ -160,12 +171,14 @@ def main():
             
     else:
         # Full width if no device data
-        st.subheader("Activity Over Time")
+        st.subheader("Listening over time")
+        st.caption("Minutes of music per month · partial months reflect the selected date range.")
         history_chart = chart_play_history(music_df, "", date_range=selected_dates)
         st.altair_chart(history_chart, use_container_width=True)
             
     # Hourly Activity
-    st.subheader("Your Daily Rhythm")
+    st.subheader("Your daily rhythm")
+    st.caption("Qualifying music plays by local hour. Spotify timestamps are treated as UTC.")
     
     with st.expander("Timezone Settings"):
         # Common timezones to choose from
@@ -176,23 +189,19 @@ def main():
         ]
         selected_tz = st.selectbox("Select Display Timezone", common_timezones, index=1) # Default to US/Pacific
 
-    hourly_stats = get_hourly_activity(df, timezone=selected_tz)
+    hourly_stats = get_hourly_activity(music_df, timezone=selected_tz)
     st.altair_chart(chart_hourly_activity(hourly_stats), use_container_width=True)
 
     st.divider()
     
-    # --- Section 3: Interactions & Flow ---
-    stats = get_interaction_stats(df)
-    
-
-    st.divider()
 
     # --- Section 4: The Charts ---
-    st.header(":material/trophy: The Favorites")
+    st.header("Your favorites")
     
     xc1, xc2 = st.columns(2)
     with xc1:
-        st.subheader("Top Artists (Music)")
+        st.subheader("Top artists")
+        st.caption("Ranked by listening hours · the small trend shows monthly listening.")
         top_artists = get_top_artists(df)
         
         st.dataframe(
@@ -218,7 +227,8 @@ def main():
         )
         
     with xc2:
-        st.subheader("Top Tracks")
+        st.subheader("Top tracks")
+        st.caption("Ranked by qualifying plays · the small trend shows monthly plays.")
         top_songs = get_top_songs(df)
         
         st.dataframe(
@@ -245,7 +255,7 @@ def main():
         
     # --- Section 5: Deep Dive ---
     st.divider()
-    st.header(":material/search: Artist Deep Dive")
+    st.header("Artist deep dive")
     
     # Sort artists by popularity (Total Minutes) in the filtered timeframe
     if not music_df.empty:
@@ -254,7 +264,7 @@ def main():
     else:
         valid_artists = []
         
-    selected_artist = st.selectbox("Select Artist", ["All Artists"] + valid_artists)
+    selected_artist = st.selectbox("Choose an artist", ["All Artists"] + valid_artists)
     
     artist_subset = filter_by_artist(music_df, selected_artist)
     
@@ -263,6 +273,7 @@ def main():
                 chart_play_history(artist_subset, f"History: {selected_artist}", date_range=selected_dates), 
                 use_container_width=True
             )
+            st.caption("Daily totals within the observed span. Days without recorded plays are shown as zero.")
             # Heatmap
             available_years = sorted(artist_subset["year"].unique(), reverse=True)
             sel_year = st.selectbox("Year", available_years)
