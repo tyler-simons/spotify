@@ -141,11 +141,11 @@ def main():
     active_days = music_df['date'].nunique()
     avg_daily = total_hours / active_days if active_days else 0
     
-    cols[0].metric("Listening time", f"{total_hours:,.1f} hrs", help="Total time spent listening to music in the selected period.")
+    cols[0].metric("Listening time", f"{total_hours:,.1f} hrs" if total_hours >= 1 else f"{total_min:,.1f} min", help="Total time spent listening to music in the selected period.")
     cols[1].metric("Artists", f"{unique_artists:,}")
     cols[2].metric("Tracks", f"{unique_tracks:,}")
     cols[3].metric("Active days", f"{active_days:,}")
-    cols[4].metric("Per active day", f"{avg_daily:.1f} hrs", help="Listening time divided by days with a qualifying music play.")
+    cols[4].metric("Per active day", f"{avg_daily:.1f} hrs" if avg_daily >= 1 else f"{avg_daily * 60:.1f} min", help="Listening time divided by days with a qualifying music play.")
 
     st.divider()
 
