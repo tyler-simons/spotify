@@ -24,7 +24,7 @@ def process_data(df: pd.DataFrame) -> pd.DataFrame:
     # isocalendar returns year, week, day
     iso_cal = df["endTime"].dt.isocalendar()
     df["week"] = iso_cal.week
-    df["year"] = iso_cal.year.astype(int)
+    df["year"] = df["endTime"].dt.year.astype(int)
     
     df["minutesPlayed"] = df["msPlayed"] / 60000
     
@@ -78,8 +78,8 @@ def get_top_artists(df: pd.DataFrame) -> pd.DataFrame:
     # Use strict music filter
     df_music = get_valid_music_df(df)
     
-    # Filter for artists with > 5 minutes total to reduce noise
-    df_filtered = df_music.groupby("artistName").filter(lambda x: x["minutesPlayed"].sum() > 5)
+    # Include every qualifying artist, even in small uploaded histories.
+    df_filtered = df_music.copy()
     
     # 1. Get the aggregate totals first to identify Top N
     top_stats = (
