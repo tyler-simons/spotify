@@ -152,30 +152,16 @@ def main():
     # --- Section 2: Listening Habits ---
     st.header("Listening habits")
     
-    # Calculate stats first to determine layout
+    st.subheader("Listening over time")
+    st.caption("Minutes of music per month · partial months reflect the selected date range.")
+    st.altair_chart(chart_play_history(music_df, "", date_range=selected_dates), use_container_width=True)
+
     platform_stats = get_platform_stats(music_df)
-    has_known_devices = platform_stats[platform_stats["Platform"] != "Unknown"].shape[0] > 0
-    
-    if has_known_devices:
-        col_habits_1, col_habits_2 = st.columns([2, 1])
-        
-        with col_habits_1:
-            st.subheader("Listening over time")
-            st.caption("Minutes of music per month · partial months reflect the selected date range.")
-            history_chart = chart_play_history(music_df, "", date_range=selected_dates)
-            st.altair_chart(history_chart, use_container_width=True)
-            
-        with col_habits_2:
-            st.subheader("Devices")
-            st.altair_chart(chart_platform_usage(platform_stats), use_container_width=True)
-            
-    else:
-        # Full width if no device data
-        st.subheader("Listening over time")
-        st.caption("Minutes of music per month · partial months reflect the selected date range.")
-        history_chart = chart_play_history(music_df, "", date_range=selected_dates)
-        st.altair_chart(history_chart, use_container_width=True)
-            
+    if (platform_stats["Platform"] != "Unknown").any():
+        st.subheader("Listening by device")
+        st.caption("Qualifying plays by reported platform. Other includes platforms the export does not identify clearly.")
+        st.altair_chart(chart_platform_usage(platform_stats), use_container_width=True)
+
     # Hourly Activity
     st.subheader("Your daily rhythm")
     st.caption("Qualifying music plays by local hour. Spotify timestamps are treated as UTC.")
@@ -273,14 +259,30 @@ def main():
                 chart_play_history(artist_subset, f"History: {selected_artist}", date_range=selected_dates), 
                 use_container_width=True
             )
-            st.caption("Daily totals within the observed span. Days without recorded plays are shown as zero.")
-            # Heatmap
+            st.subheader("Listening calendar")
+            st.caption("Minutes of music per day · UTC dates · Blank cells fall outside the observed span.")
             available_years = sorted(artist_subset["year"].unique(), reverse=True)
-            sel_year = st.selectbox("Year", available_years)
-            st.altair_chart(
-                chart_calendar_heatmap(artist_subset, sel_year, selected_artist),
-                use_container_width=True
+            year_col, _ = st.columns([1, 3])
+            with year_col:
+                sel_year = st.selectbox("Year", available_years)
+            st.markdown(
+                '<div style="display:flex;flex-wrap:wrap;gap:0.4rem 1rem;align-items:center;font-size:0.85rem;color:#335970;margin:0.5rem 0 1rem">'
+                '<strong>Minutes per day</strong>' + "".join(
+                    f'<span><span aria-hidden="true" style="display:inline-block;width:0.75rem;height:0.75rem;background:{color};border:1px solid #9cb9c6;margin-right:0.3rem"></span>{label}</span>'
+                    for label, color in [("0", "#e3edf1"), ("&lt;30", "#bfdde9"), ("30–&lt;60", "#85c2dc"), ("60–&lt;120", "#4e9fc4"), ("120–&lt;240", "#1c73a4"), ("240+", "#104667")]
+                ) + "</div>", unsafe_allow_html=True
             )
+            for first_quarter in (1, 3):
+                quarter_columns = st.columns(2)
+                for offset, col in enumerate(quarter_columns):
+                    quarter = first_quarter + offset
+                    with col:
+                        st.markdown(f"**{['January – March', 'April – June', 'July – September', 'October – December'][quarter - 1]}**")
+                        st.altair_chart(
+                            chart_calendar_heatmap(artist_subset, sel_year, selected_artist, quarter),
+                            use_container_width=True
+                        )
+            st.caption("Days within the observed span with no qualifying plays are shown as zero. Hover for the exact date and minutes.")
 
 if __name__ == "__main__":
     main()
