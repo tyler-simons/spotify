@@ -131,10 +131,10 @@ def chart_play_history(df: pd.DataFrame, title: str, date_range: tuple = None) -
         .mark_bar(color="#147eb2", cornerRadiusTopLeft=3, cornerRadiusTopRight=3)
         .encode(
             x=alt.X("yearmonth(month_start):T", title="Month", axis=alt.Axis(format="%b %Y", labelAngle=-45)),
-            y=alt.Y("minutesPlayed:Q", title="Minutes played", scale=alt.Scale(zero=True), axis=alt.Axis(format=",.0f", grid=True, tickCount=5)),
+            y=alt.Y("minutesPlayed:Q", title="Minutes played", scale=alt.Scale(zero=True), axis=alt.Axis(format=",.1~f", grid=True, tickCount=5)),
             tooltip=[
                 alt.Tooltip("yearmonth(month_start):T", title="Month", format="%B %Y"),
-                alt.Tooltip("minutesPlayed:Q", title="Minutes played", format=",.0f"),
+                alt.Tooltip("minutesPlayed:Q", title="Minutes played", format=",.1f"),
             ],
         )
         .properties(height=360, title=title)
