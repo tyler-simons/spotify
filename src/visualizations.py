@@ -141,7 +141,7 @@ def chart_play_history(df: pd.DataFrame, title: str, date_range: tuple = None) -
     )
     return chart
 
-def chart_calendar_heatmap(df: pd.DataFrame, year: int, artist_name: str) -> alt.Chart:
+def chart_calendar_heatmap(df: pd.DataFrame, year: int, artist_name: str, quarter: int = None) -> alt.Chart:
     """Daily listening by calendar date; dates outside the observed span stay blank."""
     year_df = df[pd.to_datetime(df["date"]).dt.year == year].copy()
     daily = year_df.groupby("date", as_index=False)["minutesPlayed"].sum()
@@ -161,16 +161,28 @@ def chart_calendar_heatmap(df: pd.DataFrame, year: int, artist_name: str) -> alt
     month_weeks = [int((d.dayofyear - 1 + jan1.weekday()) // 7) for d in starts]
     expr = " ".join(f"datum.value == {week} ? '{calendar.month_abbr[i]}' :" for i, week in enumerate(month_weeks, 1)) + " ''"
     max_week = int((pd.Timestamp(year=year, month=12, day=31).dayofyear - 1 + jan1.weekday()) // 7)
+    if quarter is not None:
+        first_month = 1 + 3 * (quarter - 1)
+        last_month = first_month + 2
+        daily = daily[daily["date"].dt.month.between(first_month, last_month)]
+        first_week = month_weeks[first_month - 1]
+        last_date = pd.Timestamp(year=year, month=last_month, day=calendar.monthrange(year, last_month)[1])
+        last_week = int((last_date.dayofyear - 1 + jan1.weekday()) // 7)
+        domain = list(range(first_week, last_week + 1))
+        ticks = month_weeks[first_month - 1:last_month]
+    else:
+        domain = list(range(max_week + 1))
+        ticks = month_weeks
     return (alt.Chart(daily).mark_rect(cornerRadius=2, strokeWidth=1, stroke="#ffffff").encode(
-        x=alt.X("week_index:O", title=None, scale=alt.Scale(domain=list(range(max_week + 1))),
-                axis=alt.Axis(values=month_weeks, labelExpr=expr, labelAngle=0, labelOverlap=False, ticks=False, domain=False)),
-        y=alt.Y("weekday:O", title=None, sort=days, axis=alt.Axis(labelOverlap=False, labelLimit=90, ticks=False, domain=False)),
+        x=alt.X("week_index:O", title=None, scale=alt.Scale(domain=domain),
+                axis=alt.Axis(values=ticks, labelExpr=expr, labelAngle=0, labelOverlap=False, ticks=False, domain=False)),
+        y=alt.Y("weekday:O", title=None, sort=days, scale=alt.Scale(domain=days), axis=alt.Axis(labelOverlap=False, labelLimit=90, ticks=False, domain=False)),
         color=alt.Color("band:N", title="Minutes per day", sort=labels,
                         scale=alt.Scale(domain=labels, range=["#e3edf1", "#bfdde9", "#85c2dc", "#4e9fc4", "#1c73a4", "#104667"]),
-                        legend=alt.Legend(orient="bottom", direction="horizontal")),
+                        legend=None),
         tooltip=[alt.Tooltip("date:T", title="Date", format="%b %d, %Y"),
                  alt.Tooltip("minutesPlayed:Q", title="Minutes played", format=",.1f")]
-    ).properties(height=320, title=f"Daily listening · {artist_name} · {year}"))
+    ).properties(height=260))
 
 
 def chart_hourly_activity(df: pd.DataFrame) -> alt.Chart:
@@ -182,27 +194,16 @@ def chart_hourly_activity(df: pd.DataFrame) -> alt.Chart:
     ).properties(height=300))
 
 def chart_platform_usage(df: pd.DataFrame) -> alt.Chart:
-    """
-    Donut chart of platform usage.
-    """
-    base = alt.Chart(df).encode(
-        theta=alt.Theta("Plays", stack=True)
-    )
-
-    pie = base.mark_arc(outerRadius=120, innerRadius=80).encode(
-        color=alt.Color(
-            "Platform", 
-            # Halocline categorical palette
-            scale=alt.Scale(range=["#00A68F", "#EB5E89", "#0E215C", "#F7A35C", "#2C64B8"]),
-            legend=alt.Legend(title="Platform")
-        ),
-        order=alt.Order("Plays", sort="descending"),
-        tooltip=["Platform", "Plays"]
-    )
-
-    chart = (
-        pie
-        .properties(title="Devices")
-    )
-    return chart
-
+    """Compare qualifying plays by the platform reported in the export."""
+    data = df.copy()
+    total = data["Plays"].sum()
+    data["share"] = data["Plays"] / total if total else 0
+    return (alt.Chart(data).mark_bar(color="#147eb2", cornerRadiusEnd=3, size=22).encode(
+        y=alt.Y("Platform:N", sort="-x", title=None,
+                axis=alt.Axis(labelLimit=180, labelOverlap=False)),
+        x=alt.X("Plays:Q", title="Qualifying plays", scale=alt.Scale(zero=True),
+                axis=alt.Axis(grid=True, tickCount=5, format=",d")),
+        tooltip=[alt.Tooltip("Platform:N", title="Platform"),
+                 alt.Tooltip("Plays:Q", title="Qualifying plays", format=",d"),
+                 alt.Tooltip("share:Q", title="Share of qualifying plays", format=".1%")]
+    ).properties(height=max(160, min(320, len(data) * 42))))
