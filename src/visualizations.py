@@ -3,6 +3,7 @@ import pandas as pd
 import streamlit as st
 from .utils import get_month_weeks, build_date_from_pieces
 import calendar
+from datetime import datetime
 
 CORNER_RADIUS = 4
 
@@ -141,112 +142,33 @@ def chart_play_history(df: pd.DataFrame, title: str, date_range: tuple = None) -
     return chart
 
 def chart_calendar_heatmap(df: pd.DataFrame, year: int, artist_name: str) -> alt.Chart:
-    """
-    Calendar heatmap for a specific year.
-    """
-    # Ensure all days are covered or handle standard heatmap logic
-    # ... (omitted prep code same as before) ...
-    
-    # We need to ensure types for grouping
-    df_year = df[df["year"] == year].copy()
-    
-    # Simplify for heatmap
-    keep_cols = ["date", "minutesPlayed", "day_of_week_str", "week", "year"]
-    # Ensure these cols exist
-    for c in keep_cols:
-        if c not in df_year.columns:
-            # Should have been processed in data_processing
-            pass
+    """Daily music minutes, aligned to calendar dates rather than ISO years."""
+    year_df = df[pd.to_datetime(df["date"]).dt.year == year].copy()
+    daily = year_df.groupby("date", as_index=False)["minutesPlayed"].sum()
+    daily["date"] = pd.to_datetime(daily["date"])
+    # Only represent the observed span; do not imply that dates outside the export are zero.
+    dates = pd.DataFrame({"date": pd.date_range(daily["date"].min(), daily["date"].max())})
+    daily = dates.merge(daily, on="date", how="left").fillna({"minutesPlayed": 0})
+    jan1 = pd.Timestamp(year=year, month=1, day=1)
+    daily["week_index"] = ((daily["date"].dt.dayofyear - 1 + jan1.weekday()) // 7).astype(int)
+    daily["weekday"] = daily["date"].dt.day_name()
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    return (alt.Chart(daily).mark_rect(cornerRadius=2).encode(
+        x=alt.X("week_index:O", title="Week of year", axis=alt.Axis(labelAngle=0, tickCount=12)),
+        y=alt.Y("weekday:O", title="Day of week", sort=days),
+        color=alt.Color("minutesPlayed:Q", title="Minutes", scale=alt.Scale(scheme="blues", zero=True)),
+        tooltip=[alt.Tooltip("date:T", title="Date", format="%b %d, %Y"),
+                 alt.Tooltip("minutesPlayed:Q", title="Minutes played", format=",.1f")]
+    ).properties(height=180, title=f"Daily listening · {artist_name} · {year}"))
 
-    # Aggregating
-    heatmap_agg = (
-        df_year.groupby(["week", "day_of_week_str"])["minutesPlayed"]
-        .sum().reset_index()
-    )
-    
-    # Bucketing
-    bucket_labels = ["0 min", "1-5 min", "5-15 min", "15-60 min", "60+ min"]
-    heatmap_agg["min_bucket"] = pd.cut(
-        heatmap_agg["minutesPlayed"], bins=[-1, 1, 5, 15, 60, 100000], labels=bucket_labels
-    )
-    
-    # We need a way to label months on the x-axis (weeks)
-    # This requires the helper function from utils
-    month_weeks = get_month_weeks(year)
-    
-    # Format label expression for Altair
-    format_label_expr = "||".join(
-        [
-            f"datum.value === {month_week} ?  '{month}': ''"
-            for month, month_week in zip(calendar.month_abbr[1:], month_weeks)
-        ]
-    )
-    
-    # Sort days
-    days_order = [
-         "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
-    ]
-    
-    chart = (
-        alt.Chart(heatmap_agg)
-        .mark_rect(cornerRadius=2)
-        .encode(
-            x=alt.X(
-                "week:O",
-                title="Week",
-                # Force domain to show all weeks 1-53 to keep chart width consistent
-                scale=alt.Scale(domain=list(range(1, 54))),
-                axis=alt.Axis(labelExpr=format_label_expr, labelAngle=0)
-            ),
-            y=alt.Y(
-                "day_of_week_str:O",
-                title=None,
-                sort=days_order
-            ),
-            color=alt.Color(
-                "min_bucket:O",
-                title="Minutes Played",
-                scale=alt.Scale(
-                     # Halocline Heatmap: White -> Light Cyan -> Teal -> Navy
-                     range=["#F2F8FA", "#CDE8E6", "#00A68F", "#2C64B8", "#0E215C"],
-                     domain=bucket_labels
-                ),
-                legend=alt.Legend(orient="bottom")
-            ),
-            tooltip=[
-                alt.Tooltip("week", title="Week"),
-                alt.Tooltip("day_of_week_str", title="Day"),
-                alt.Tooltip("minutesPlayed", title="Minutes", format=",.0f")
-            ]
-        )
-        .properties(title=f"Listening History for {artist_name} in {year}")
-        .configure_scale(bandPaddingInner=0.2)
-    )
-    
-    return chart
 
 def chart_hourly_activity(df: pd.DataFrame) -> alt.Chart:
-    """
-    Bar chart of listening count by hour of day.
-    """
-    # Ensure correct sorting of hours 0-23
-    chart = (
-        alt.Chart(df)
-        .mark_bar(cornerRadiusTopLeft=4, cornerRadiusTopRight=4)
-        .encode(
-            x=alt.X("hour_label:N", title="Hour of Day", sort=alt.EncodingSortField(field="time", order="ascending"), axis=alt.Axis(labelAngle=0)),
-            y=alt.Y("Count:Q", title="Songs Played"),
-            color=alt.Color(
-                "Count:Q", 
-                # Single hue gradient: Teal -> Navy
-                scale=alt.Scale(range=["#00A68F", "#0E215C"]), 
-                legend=None
-            ),
-            tooltip=["hour_label", "Count"]
-        )
-        .properties(title="When do you listen?", height=300)
-    )
-    return chart
+    """Qualifying music plays by local hour, including zero-count hours."""
+    return (alt.Chart(df).mark_bar(color="#147eb2", cornerRadiusTopLeft=3, cornerRadiusTopRight=3).encode(
+        x=alt.X("time:O", title="Hour of day", axis=alt.Axis(labelAngle=0, labelOverlap=True)),
+        y=alt.Y("Count:Q", title="Qualifying plays", scale=alt.Scale(zero=True), axis=alt.Axis(grid=True, tickCount=5, format=",d")),
+        tooltip=[alt.Tooltip("hour_label:N", title="Hour"), alt.Tooltip("Count:Q", title="Plays", format=",.0f")]
+    ).properties(height=300))
 
 def chart_platform_usage(df: pd.DataFrame) -> alt.Chart:
     """
